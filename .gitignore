@@ -1,0 +1,74 @@
+### Maven / Java ###
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+.kotlin
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### IntelliJ IDEA ###
+.idea/
+.idea/modules.xml
+.idea/jarRepositories.xml
+.idea/compiler.xml
+.idea/libraries/
+*.iws
+*.iml
+*.ipr
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+
+### Environment ###
+.env
+.env.local
+.env.*.local
+
+### Docker ###
+docker-compose.override.yml
+.docker/
+docker/.env
+
+### Cursor / local ###
+.cursor/
+Cursore/
+agent-transcripts/
+
+### Frontend (React / Vite) — budget_app-main ###
+budget_app-main/node_modules/
+budget_app-main/dist/
+budget_app-main/dist-ssr/
+budget_app-main/.vite/
+budget_app-main/*.local
+budget_app-main/logs/
+budget_app-main/*.log
+budget_app-main/npm-debug.log*
+budget_app-main/yarn-debug.log*
+budget_app-main/yarn-error.log*
+budget_app-main/pnpm-debug.log*
+budget_app-main/lerna-debug.log*
+budget_app-main/coverage/
+
+### Sonar ###
+.scannerwork/
+.sonar/

@@ -1,0 +1,218 @@
+{
+  "info": {
+    "name": "Lab11 GraphQL",
+    "_postman_id": "3e2f3e75-5bf8-4f5e-8bbf-a9d17bd3fd55",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/api/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.expect(json.token).to.be.a('string').and.not.empty;",
+              "pm.environment.set('token', json.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GraphQL Transactions Query",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/graphql",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"query Transactions($sortBy: String, $sortDir: String) { transactions(sortBy: $sortBy, sortDir: $sortDir) { id amount type tags notes timestamp } }\",\n  \"variables\": {\n    \"sortBy\": \"timestamp\",\n    \"sortDir\": \"desc\"\n  }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.expect(json.errors).to.eql(undefined);",
+              "pm.expect(json.data.transactions).to.be.an('array');"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GraphQL Add Transaction",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/graphql",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"mutation AddTransaction($input: TransactionInput!) { addTransaction(transactionDTO: $input) { id amount type tags notes timestamp } }\",\n  \"variables\": {\n    \"input\": {\n      \"amount\": 20,\n      \"type\": \"INCOME\",\n      \"tags\": \"salary\",\n      \"notes\": \"lab11\"\n    }\n  }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.expect(json.errors).to.eql(undefined);",
+              "pm.expect(json.data.addTransaction.id).to.exist;",
+              "pm.environment.set('transactionId', json.data.addTransaction.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GraphQL Validation Error",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/graphql",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"mutation AddTransaction($input: TransactionInput!) { addTransaction(transactionDTO: $input) { id } }\",\n  \"variables\": {\n    \"input\": {\n      \"amount\": 0,\n      \"type\": \"BAD_TYPE\",\n      \"tags\": \"verylongtag_verylongtag_verylongtag_verylongtag_verylongtag\",\n      \"notes\": \"bad\"\n    }\n  }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 with GraphQL errors', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.expect(json.errors).to.be.an('array').and.not.empty;"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GraphQL Update Transaction",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/graphql",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"mutation UpdateTransaction($id: ID!, $input: TransactionInput!) { updateTransaction(id: $id, transactionDTO: $input) { id amount type tags notes } }\",\n  \"variables\": {\n    \"id\": \"{{transactionId}}\",\n    \"input\": {\n      \"amount\": 30,\n      \"type\": \"EXPENSE\",\n      \"tags\": \"food\",\n      \"notes\": \"updated\"\n    }\n  }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Update success', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.expect(json.errors).to.eql(undefined);",
+              "pm.expect(Number(json.data.updateTransaction.amount)).to.eql(30);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GraphQL Balance Query",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/graphql",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"query Balance($days: Int) { userBalance(days: $days) { totalIncome totalExpense balance } }\",\n  \"variables\": { \"days\": 30 }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Balance success', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.expect(json.errors).to.eql(undefined);",
+              "pm.expect(json.data.userBalance.balance).to.not.eql(undefined);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GraphQL Delete Transaction",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/graphql",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"mutation DeleteTransaction($id: ID!) { deleteTransaction(id: $id) }\",\n  \"variables\": { \"id\": \"{{transactionId}}\" }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Delete success', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.expect(json.errors).to.eql(undefined);",
+              "pm.expect(json.data.deleteTransaction).to.eql(true);"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081" },
+    { "key": "email", "value": "test@example.com" },
+    { "key": "password", "value": "password123" },
+    { "key": "token", "value": "" },
+    { "key": "transactionId", "value": "" }
+  ]
+}

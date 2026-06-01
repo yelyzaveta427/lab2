@@ -1,0 +1,115 @@
+{
+  "info": {
+    "name": "Lab12 GraphQL Tests",
+    "_postman_id": "c8b7f4d6-9f9a-4d2b-9eaa-lab12graphqltests",
+    "description": "Automated GraphQL tests for Lab12 group/debt features",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081" },
+    { "key": "ownerEmail", "value": "owner_lab12@test.com" },
+    { "key": "memberEmail", "value": "member_lab12@test.com" },
+    { "key": "outsiderEmail", "value": "outsider_lab12@test.com" },
+    { "key": "password", "value": "Password123!" },
+    { "key": "ownerToken", "value": "" },
+    { "key": "memberToken", "value": "" },
+    { "key": "outsiderToken", "value": "" },
+    { "key": "groupId", "value": "" },
+    { "key": "memberId", "value": "" },
+    { "key": "outsiderId", "value": "" },
+    { "key": "debtId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 Register users",
+      "item": [
+        {
+          "name": "Register owner",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/auth/register", "body": { "mode": "raw", "raw": "{\"email\":\"{{ownerEmail}}\",\"password\":\"{{password}}\",\"currency\":\"PLN\"}" } }
+        },
+        {
+          "name": "Register member",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/auth/register", "body": { "mode": "raw", "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{password}}\",\"currency\":\"PLN\"}" } }
+        },
+        {
+          "name": "Register outsider",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/auth/register", "body": { "mode": "raw", "raw": "{\"email\":\"{{outsiderEmail}}\",\"password\":\"{{password}}\",\"currency\":\"PLN\"}" } }
+        }
+      ]
+    },
+    {
+      "name": "02 Login users",
+      "item": [
+        {
+          "name": "Login owner",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/auth/login", "body": { "mode": "raw", "raw": "{\"email\":\"{{ownerEmail}}\",\"password\":\"{{password}}\"}" } },
+          "event": [{ "listen": "test", "script": { "exec": ["const json=pm.response.json();pm.collectionVariables.set('ownerToken',json.token);pm.test('owner token exists',()=>pm.expect(json.token).to.be.a('string'));"] } }]
+        },
+        {
+          "name": "Login member",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/auth/login", "body": { "mode": "raw", "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{password}}\"}" } },
+          "event": [{ "listen": "test", "script": { "exec": ["const json=pm.response.json();pm.collectionVariables.set('memberToken',json.token);"] } }]
+        },
+        {
+          "name": "Login outsider",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/auth/login", "body": { "mode": "raw", "raw": "{\"email\":\"{{outsiderEmail}}\",\"password\":\"{{password}}\"}" } },
+          "event": [{ "listen": "test", "script": { "exec": ["const json=pm.response.json();pm.collectionVariables.set('outsiderToken',json.token);"] } }]
+        }
+      ]
+    },
+    {
+      "name": "03 Group lifecycle and debts",
+      "item": [
+        {
+          "name": "Create group and verify myGroups",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{ownerToken}}" }], "url": "{{baseUrl}}/graphql", "body": { "mode": "graphql", "graphql": { "query": "mutation($input:GroupInput!){createGroup(input:$input){id name ownerId}}", "variables": "{\"input\":{\"name\":\"Lab12 Team\"}}" } } },
+          "event": [{ "listen": "test", "script": { "exec": ["const data=pm.response.json().data.createGroup;pm.collectionVariables.set('groupId',data.id);pm.test('owner created group',()=>pm.expect(data.name).to.eql('Lab12 Team'));"] } }]
+        },
+        {
+          "name": "Owner adds member",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{ownerToken}}" }], "url": "{{baseUrl}}/graphql", "body": { "mode": "graphql", "graphql": { "query": "mutation($input:MembershipInput!){addMember(input:$input){id groupId userId email}}", "variables": "{\"input\":{\"groupId\":\"{{groupId}}\",\"email\":\"{{memberEmail}}\"}}" } } },
+          "event": [{ "listen": "test", "script": { "exec": ["const m=pm.response.json().data.addMember;pm.collectionVariables.set('memberId',m.userId);pm.test('member added',()=>pm.expect(m.email).to.eql(pm.collectionVariables.get('memberEmail')));"] } }]
+        },
+        {
+          "name": "Only owner can add members",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{memberToken}}" }], "url": "{{baseUrl}}/graphql", "body": { "mode": "graphql", "graphql": { "query": "mutation($input:MembershipInput!){addMember(input:$input){id}}", "variables": "{\"input\":{\"groupId\":\"{{groupId}}\",\"email\":\"{{outsiderEmail}}\"}}" } } },
+          "event": [{ "listen": "test", "script": { "exec": ["const json=pm.response.json();pm.test('non owner rejected',()=>pm.expect(json.errors).to.exist);"] } }]
+        },
+        {
+          "name": "Group members visible only to member",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{outsiderToken}}" }], "url": "{{baseUrl}}/graphql", "body": { "mode": "graphql", "graphql": { "query": "query($groupId:ID!){groupMembers(groupId:$groupId){id}}", "variables": "{\"groupId\":\"{{groupId}}\"}" } } },
+          "event": [{ "listen": "test", "script": { "exec": ["const json=pm.response.json();pm.test('outsider cannot view members',()=>pm.expect(json.errors).to.exist);"] } }]
+        },
+        {
+          "name": "Group transaction INCOME creates debts",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{ownerToken}}" }], "url": "{{baseUrl}}/graphql", "body": { "mode": "graphql", "graphql": { "query": "mutation($input:GroupTransactionInput!){addGroupTransaction(input:$input){id amount notes}}", "variables": "{\"input\":{\"groupId\":\"{{groupId}}\",\"amount\":120,\"type\":\"INCOME\",\"title\":\"Salary split\"}}" } } }
+        },
+        {
+          "name": "groupDebts available to member and set debtId",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{memberToken}}" }], "url": "{{baseUrl}}/graphql", "body": { "mode": "graphql", "graphql": { "query": "query($groupId:ID!){groupDebts(groupId:$groupId){id amount debtor{id} creditor{id}}}", "variables": "{\"groupId\":\"{{groupId}}\"}" } } },
+          "event": [{ "listen": "test", "script": { "exec": ["const debts=pm.response.json().data.groupDebts;pm.test('debts returned',()=>pm.expect(debts.length).to.be.greaterThan(0));if(debts[0])pm.collectionVariables.set('debtId',debts[0].id);"] } }]
+        },
+        {
+          "name": "createDebt rejects self debt",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{ownerToken}}" }], "url": "{{baseUrl}}/graphql", "body": { "mode": "graphql", "graphql": { "query": "mutation($input:DebtInput!){createDebt(input:$input){id}}", "variables": "{\"input\":{\"groupId\":\"{{groupId}}\",\"debtorId\":\"{{memberId}}\",\"creditorId\":\"{{memberId}}\",\"amount\":10,\"title\":\"invalid\"}}" } } },
+          "event": [{ "listen": "test", "script": { "exec": ["const json=pm.response.json();pm.test('self debt rejected',()=>pm.expect(json.errors).to.exist);"] } }]
+        },
+        {
+          "name": "deleteDebt allowed for participant",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{memberToken}}" }], "url": "{{baseUrl}}/graphql", "body": { "mode": "graphql", "graphql": { "query": "mutation($debtId:ID!){deleteDebt(debtId:$debtId)}", "variables": "{\"debtId\":\"{{debtId}}\"}" } } },
+          "event": [{ "listen": "test", "script": { "exec": ["const ok=pm.response.json().data.deleteDebt;pm.test('participant deleted debt',()=>pm.expect(ok).to.eql(true));"] } }]
+        },
+        {
+          "name": "Member cannot delete group",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{memberToken}}" }], "url": "{{baseUrl}}/graphql", "body": { "mode": "graphql", "graphql": { "query": "mutation($id:ID!){deleteGroup(id:$id)}", "variables": "{\"id\":\"{{groupId}}\"}" } } },
+          "event": [{ "listen": "test", "script": { "exec": ["const json=pm.response.json();pm.test('non owner cannot delete group',()=>pm.expect(json.errors).to.exist);"] } }]
+        },
+        {
+          "name": "Owner deletes group",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{ownerToken}}" }], "url": "{{baseUrl}}/graphql", "body": { "mode": "graphql", "graphql": { "query": "mutation($id:ID!){deleteGroup(id:$id)}", "variables": "{\"id\":\"{{groupId}}\"}" } } },
+          "event": [{ "listen": "test", "script": { "exec": ["const ok=pm.response.json().data.deleteGroup;pm.test('owner deleted group',()=>pm.expect(ok).to.eql(true));"] } }]
+        }
+      ]
+    }
+  ]
+}
